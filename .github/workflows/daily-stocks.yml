@@ -31,7 +31,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python daily_runner.py --market all
+        run: python daily_runner.py --market kr
       - name: Upload results and source timestamps
         if: always()
         uses: actions/upload-artifact@v4
