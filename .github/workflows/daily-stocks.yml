@@ -2,8 +2,8 @@ name: Daily 52-week drawdown Telegram
 
 on:
   schedule:
-    # 07:00 UTC = 16:00 Asia/Seoul, every day (including weekends).
-    - cron: '0 7 * * *'
+    # 07:00 UTC = 16:00 Asia/Seoul, Monday through Friday.
+    - cron: '0 7 * * 1-5'
   workflow_dispatch:
 
 permissions:
