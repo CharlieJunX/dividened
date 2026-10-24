@@ -1,0 +1,42 @@
+name: Daily 52-week drawdown Telegram
+
+on:
+  schedule:
+    # 07:00 UTC = 16:00 Asia/Seoul, every day (including weekends).
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-stock-alerts
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Regression tests
+        run: python -m unittest -v
+      - name: Collect and send Telegram alerts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python daily_runner.py --market all
+      - name: Upload results and source timestamps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-results-${{ github.run_number }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 30
