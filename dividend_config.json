@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "dividend_mode": "all",
+  "thresholds": {
+    "drawdown_pct": -30,
+    "min_yield_pct": 3,
+    "min_yield_ratio": 1.2
+  },
+  "notifications": {
+    "max_candidates": 10,
+    "notify_empty": false
+  },
+  "quality": {
+    "history_years": 7,
+    "max_price_age_days": 10,
+    "max_price_gap_days": 10,
+    "dividend_delay_grace_days": 45,
+    "quote_tolerance_pct": 10,
+    "max_yield_pct": 40
+  },
+  "symbols": {},
+  "korean_dividends": {
+    "securities": {}
+  },
+  "dividend_reviews": {
+  "kr": {"dividend_currency": "KRW"},
+  "us": {"dividend_currency": "USD"},
+  "eu": {"dividend_currency": "EUR"}
+  }
+}

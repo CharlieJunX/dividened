@@ -1,13 +1,14 @@
-name: Daily 52-week drawdown Telegram
+name: Weekly global stock Telegram
 
 on:
   schedule:
-    # 07:00 UTC = 16:00 Asia/Seoul, Monday through Friday.
-    - cron: '0 7 * * 1-5'
+    # Wednesday 07:00 UTC = Wednesday 16:00 Asia/Seoul.
+    - cron: '0 7 * * 3'
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: daily-stock-alerts
@@ -26,17 +27,55 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Regression tests
-        run: python -m unittest -v
+        run: python -m pytest -v
       - name: Collect and send Telegram alerts
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python daily_runner.py --market kr
+          DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
+          OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
+        run: python daily_runner.py --market all
       - name: Upload results and source timestamps
+        id: upload_results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: stock-results-${{ github.run_number }}
           path: reports/
           if-no-files-found: warn
-          retention-days: 2
+          overwrite: true
+          # Count-based cleanup below; expiry follows repository policy.
+      - name: Keep results from the latest two workflow runs
+        if: ${{ always() && steps.upload_results.outcome == 'success' && steps.upload_results.outputs['artifact-id'] != '' }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const repo = context.repo;
+            const { data: currentRun } = await github.rest.actions.getWorkflowRun({
+              ...repo, run_id: context.runId
+            });
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              ...repo, workflow_id: currentRun.workflow_id, per_page: 100
+            });
+            const runNumbers = new Map(runs.map(run => [run.id, run.run_number]));
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              ...repo, per_page: 100
+            });
+            const results = artifacts.filter(artifact =>
+              /^stock-results-\d+$/.test(artifact.name) &&
+              runNumbers.has(artifact.workflow_run?.id)
+            );
+            const resultRuns = [...new Set(results
+              .filter(artifact => !artifact.expired)
+              .map(artifact => artifact.workflow_run.id))]
+              .sort((a, b) => runNumbers.get(b) - runNumbers.get(a));
+            const keep = new Set(resultRuns.slice(0, 2));
+            for (const artifact of results) {
+              if (keep.has(artifact.workflow_run.id) && !artifact.expired) continue;
+              try {
+                await github.rest.actions.deleteArtifact({ ...repo, artifact_id: artifact.id });
+                core.info(`Deleted old results: ${artifact.name}`);
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }

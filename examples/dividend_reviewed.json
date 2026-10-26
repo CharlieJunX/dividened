@@ -1,0 +1,15 @@
+{
+  "notifications": {
+    "notify_empty": true
+  },
+  "dividend_reviews": {
+    "us:AAPL": {
+      "from": "2019-10-01",
+      "through": "2026-10-25",
+      "source": "https://investor.apple.com/dividend-history/",
+      "default_kind": "regular",
+      "dividend_currency": "USD",
+      "notes": "Reviewed 2026-10-25: all 28 fetched cash events are Regular Cash. Issuer amounts before 2020-08-31 are divided by 4 to match Yahoo's split-adjusted amounts. Dates used in calculations remain Yahoo ex-dates, not issuer record/payable dates."
+    }
+  }
+}
