@@ -16,6 +16,9 @@ from urllib.request import Request, urlopen
 from dotenv import load_dotenv
 import stock_52week as stocks
 import dividend_report as dividends
+from fundamentals import report as fundamentals
+from fundamentals.config import load_config as load_fundamental_config
+from fundamentals.storage import Store
 
 ROOT = Path(__file__).resolve().parent
 KST = timezone(timedelta(hours=9))
@@ -75,9 +78,14 @@ def main():
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'reports')
     parser.add_argument('--dry-run', action='store_true', help='실제 조회 및 CSV 저장, 전송은 생략')
     parser.add_argument('--config', type=Path, default=ROOT / 'dividend_config.json')
+    parser.add_argument('--fundamental-config', type=Path, default=ROOT / 'fundamental_config.json')
+    parser.add_argument('--state-dir', type=Path, default=ROOT / 'state')
+    parser.add_argument('--no-fundamentals', action='store_true', help='기존 주가·배당 분석만 실행')
     parser.add_argument('--symbols', nargs='+', help='입력 목록 내 지정 코드만 조회 (대표 종목 검증용)')
     args = parser.parse_args()
     config = dividends.load_config(args.config)
+    fundamental_config = None if args.no_fundamentals else load_fundamental_config(args.fundamental_config)
+    fundamental_enabled = bool(fundamental_config and fundamental_config['enabled'])
     load_dotenv(args.env_file, override=False)
     token, chat_id = os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHAT_ID')
     if not args.dry_run and (not token or not chat_id):
@@ -97,6 +105,10 @@ def main():
     logger.setLevel(logging.INFO)
     logger.addHandler(log_handler)
     status = 0
+    # Preview evaluations/deliveries never change the production comparison baseline.
+    state = Store(args.state_dir / ('fundamentals-preview.sqlite3' if args.dry_run else 'fundamentals.sqlite3')) if fundamental_enabled else None
+    if state:
+        state.prune_cache(max(35, fundamental_config['refresh_days'] * 2))
     all_results, preview = [], []
     for market, inputs in jobs:
         # A new folder per market guarantees that yesterday's CSV cannot be sent.
@@ -110,12 +122,21 @@ def main():
                 (args.output_dir / artifact.name).write_bytes(artifact.read_bytes())
             timestamp = datetime.now(KST).strftime('%Y-%m-%d %H:%M KST')
             messages = build_messages(market, alerts, timestamp)
+            quote_audit = json.loads(output.with_suffix('.audit.json').read_text(encoding='utf-8'))
+            records = []
             if config['enabled']:
-                quote_audit = json.loads(output.with_suffix('.audit.json').read_text(encoding='utf-8'))
                 records, failed = dividends.run_market(market, inputs, quote_audit, args.output_dir,
                                                        config, datetime.now(KST).date())
                 all_results.extend(records)
                 status = max(status, int(failed))
+            if fundamental_enabled:
+                financial_records, financial_failed = fundamentals.run_market(
+                    market, inputs, quote_audit, records, args.output_dir,
+                    fundamental_config, state, datetime.now(KST).date())
+                financial_by_code = {r['code']: r for r in financial_records}
+                for dividend_record in records:
+                    dividend_record['fundamental'] = financial_by_code[dividend_record['code']]
+                print(f'{market}: 펀더멘털 {len(financial_records)}개 분석, 자료 수집 오류 {financial_failed}', flush=True)
             print(f'{market}: 알림 대상 {len(alerts)}개, 조회 실패 여부 {bool(result)}', flush=True)
             preview.extend(messages)
             if args.dry_run:
@@ -125,6 +146,9 @@ def main():
                 time.sleep(1.1)
     dividend_messages = dividends.build_messages(all_results, config) if config['enabled'] else []
     preview.extend(dividend_messages)
+    pending = fundamentals.notifications(state, [f'{m}:{s[0]}' for m, inputs in jobs for s in inputs],
+                                         datetime.now(KST).date()) if state else []
+    preview.extend(text for _, text in pending)
     (args.output_dir / 'telegram_preview.txt').write_text('\n\n---\n\n'.join(preview), encoding='utf-8')
     if args.dry_run:
         for message in preview:
@@ -133,6 +157,13 @@ def main():
         for message in dividend_messages:
             send_message(token, chat_id, message)
             time.sleep(1.1)
+        if state:
+            def send_financial(text):
+                send_message(token, chat_id, text)
+                time.sleep(1.1)
+            fundamentals.deliver(state, pending, send_financial)
+    if state:
+        state.close()
     logger.removeHandler(log_handler)
     log_handler.close()
     return status

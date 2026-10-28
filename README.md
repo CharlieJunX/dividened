@@ -1,5 +1,8 @@
 # 한국·미국·유럽 주식 52주 최고가 대비 등락률
 
+글로벌 펀더멘털 악화 탐지 기능이 추가되었습니다. 기존 실행 스크립트에서 함께 실행되며,
+설정·위험 기준·공식 데이터 지원 범위·영구 저장 방법은 [FUNDAMENTALS.md](FUNDAMENTALS.md)를 참고하세요.
+
 자동 조회 및 Telegram 알림:
 
 ```powershell
@@ -13,7 +16,7 @@ python daily_runner.py --market all
 등락률이 -30.00% 이하인 종목의 symbol, 회사명, 등락률을 하락 순으로 전송합니다.
 해당 종목이 없으면 메시지를 보내지 않습니다. 결과는 `reports/`에 저장합니다.
 
-GitHub Actions는 매일 07:00 UTC(한국시간 오후 4시)에 실행합니다.
+GitHub Actions는 매주 수요일 07:00 UTC(한국시간 수요일 오후 4시)에 실행합니다.
 GitHub 예약 실행은 지연될 수 있습니다. 저장소 Settings → Secrets and variables →
 Actions에 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`를 등록해야 발송됩니다.
 로컬 `.env` 파일은 업로드하지 않습니다. Actions 탭에서 수동 실행도 가능합니다.

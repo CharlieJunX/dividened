@@ -10,4 +10,5 @@ friendly_*_52week.csv
 friendly_*_52week_errors.csv
 friendly_*_52week.audit.json
 *.tmp
+state/
 

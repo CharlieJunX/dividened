@@ -197,6 +197,13 @@ def build_messages(results, config):
         message += '\n배당 계산 기준: ' + m.get('dividend_basis', '정기배당만')
         if m['warnings']:
             message += '\n위험 경고: ' + '; '.join(m['warnings'])
+        if r.get('fundamental'):
+            financial = r['fundamental']
+            analysis = financial['analysis']
+            message += (f'\n\n펀더멘털 위험 상태: {analysis["status"]}'
+                        f'\n투자 검토 결과: {financial["decision"]}'
+                        f'\n매수 후보 포함: {"예" if financial["buy_candidate"] else "아니오"}'
+                        f'\n최신 재무 공시일: {analysis["latest_filing"] or "N/A"}')
         if len(message.encode('utf-16-le')) // 2 > 3500:
             raise ValueError('배당 메시지가 Telegram 크기 제한을 초과합니다')
         messages.append(message)

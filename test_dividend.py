@@ -321,7 +321,8 @@ def test_daily_dry_run_never_sends_and_keeps_legacy_alert(tmp_path):
         output.with_suffix('.audit.json').write_text(json.dumps([{'code': 'SAMPLE', 'name': '가상기업',
             'current': 80, 'high_52week': 120, 'currency': 'USD'}]), encoding='utf-8')
         return 0
-    with patch('sys.argv', ['daily_runner.py', '--market', 'us', '--dry-run', '--output-dir', str(tmp_path)]), \
+    with patch('sys.argv', ['daily_runner.py', '--market', 'us', '--dry-run', '--no-fundamentals',
+                           '--fundamental-config', str(tmp_path / 'missing.json'), '--output-dir', str(tmp_path)]), \
          patch.object(daily_runner.stocks, 'read_stocks', return_value=[('SAMPLE', '가상기업', 'A', '')]), \
          patch.object(daily_runner.stocks, 'run_market', side_effect=fake_market), \
          patch.object(daily_runner.dividends, 'load_config', return_value=config), \

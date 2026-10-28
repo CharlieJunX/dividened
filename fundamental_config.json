@@ -1,0 +1,36 @@
+{
+  "enabled": true,
+  "exclude_high_risk": false,
+  "refresh_days": 7,
+  "max_annual_age_days": 550,
+  "max_quarter_age_days": 200,
+  "history_years": 6,
+  "min_annual_periods": 5,
+  "min_quarter_periods": 8,
+  "single_warning_status": "WARNING",
+  "http": {"timeout": 25, "attempts": 3, "interval_seconds": 0.25},
+  "securities": {},
+  "industries": {
+    "GENERAL": {
+      "required": ["revenue_growth", "operating_income_growth", "eps_growth", "ocf", "fcf", "net_debt_ebitda", "dividend_fcf"],
+      "thresholds": {"revenue_growth": [-10, -20], "operating_income_growth": [-20, -40], "eps_growth": [-20, -40], "net_debt_ebitda": [3.5, 5]}
+    },
+    "BANK": {
+      "required": ["net_income_growth", "eps_growth", "roe", "cet1", "npl", "dividend_income"],
+      "thresholds": {"net_income_growth": [-20, -40], "eps_growth": [-20, -40], "roe_change": [-3, -6], "cet1": [10, 7], "npl": [3, 5], "credit_loss_growth": [30, 60], "dividend_income": [1, 1.5]}
+    },
+    "INSURER": {
+      "required": ["net_income_growth", "eps_growth", "roe", "solvency", "dividend_income"],
+      "thresholds": {"net_income_growth": [-20, -40], "eps_growth": [-20, -40], "roe_change": [-3, -6], "dividend_income": [1, 1.5]}
+    },
+    "REIT": {
+      "required": ["affo_growth", "dividend_affo", "net_debt_ebitda", "interest_coverage", "rental_income_growth"],
+      "thresholds": {"affo_growth": [-10, -20], "ffo_growth": [-10, -20], "rental_income_growth": [-10, -20], "dividend_affo": [1, 1.2], "net_debt_ebitda": [6, 8], "interest_coverage": [2, 1]}
+    },
+    "OTHER_FINANCIAL": {
+      "required": ["net_income_growth", "eps_growth", "roe", "dividend_income"],
+      "thresholds": {"net_income_growth": [-20, -40], "eps_growth": [-20, -40], "roe_change": [-3, -6], "dividend_income": [1, 1.5]}
+    },
+    "UNKNOWN": {"required": ["classification"], "thresholds": {}}
+  }
+}
