@@ -1,0 +1,12 @@
+{
+  "start": "2025-01-01",
+  "end": "2026-10-30",
+  "segments": [],
+  "data_file": "state/backtest/three_market_prices.json",
+  "output_dir": "reports/backtest_real_validation",
+  "collect": [
+    {"symbol": "033780.KS", "market": "kr"},
+    {"symbol": "AAPL", "market": "us"},
+    {"symbol": "ALV.DE", "market": "eu"}
+  ]
+}

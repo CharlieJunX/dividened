@@ -1,5 +1,18 @@
 # 한국·미국·유럽 주식 52주 최고가 대비 등락률
 
+투자 신호 백테스트는 [BACKTEST.md](BACKTEST.md)를 참고하세요. 기존 일일 분석과 분리된 수동 실행입니다.
+
+```powershell
+# 외부 API 없이 가상 데이터 이벤트·포트폴리오 검증 (실제 투자 성과 아님)
+.\.venv\Scripts\python.exe backtest_runner.py --demo --mode both
+
+# 검증된 과거 입력 파일 사용
+.\.venv\Scripts\python.exe backtest_runner.py --config backtest_config.json --offline --mode event
+```
+
+결과는 `reports/backtests/실행별폴더/report.html`에 저장합니다. 자료 없는 전략은 N/A로 표시하며
+Telegram을 보내지 않습니다. 실제 데이터 준비·모드·편향·지원 범위는 위 문서를 확인하세요.
+
 역사적 밸류에이션·100점 종합 투자 점수 기능은 [INVESTMENT.md](INVESTMENT.md)를 참고하세요.
 `daily_runner.py`에서 함께 실행되며, 자료 부족 기업은 점수·순위를 N/A로 표시합니다.
 

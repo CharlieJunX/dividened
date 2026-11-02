@@ -1,0 +1,28 @@
+{
+  "start": "2018-01-01", "end": "2026-10-30",
+  "data_file": "state/backtest/market_data.json", "output_dir": "reports/backtests",
+  "universe_mode": "current_watchlist", "high_basis": "high", "lookback_sessions": 252,
+  "holding_months": [3, 6, 12], "allow_overlap": false,
+  "initial_capital": 100000000, "base_currency": "KRW", "max_positions": 10,
+  "target_weight": 0.1, "fractional_shares": false, "reinvest_dividends": false,
+  "optional_exits": {"stop_loss": false, "take_profit": false, "score_exit": false},
+  "costs": {"buy_fee": 0.001, "sell_fee": 0.001, "sell_tax": 0.0,
+    "buy_slippage": 0.001, "sell_slippage": 0.001, "fx_fee": 0.0, "dividend_withholding": 0.0},
+  "cost_basis": "Hypothetical assumptions, not verified historical national tax rates",
+  "fx_max_age_days": 5, "annualization_days": 252, "risk_free_rate": 0.0, "min_sample": 20,
+  "benchmarks": {"kr": null, "us": null, "eu": null},
+  "strategies": [
+    {"id": "price", "drawdown_pct": -30},
+    {"id": "dividend", "drawdown_pct": -30, "dividend": true},
+    {"id": "quality", "drawdown_pct": -30, "dividend": true, "fundamental": true},
+    {"id": "value", "drawdown_pct": -30, "dividend": true, "fundamental": true, "value": true},
+    {"id": "score", "drawdown_pct": -30, "dividend": true, "score_min": 70}
+  ],
+  "experiment": "fixed_baseline",
+  "sensitivity": {"drawdown_pct": [], "score_min": []},
+  "segments": [
+    {"name": "train", "start": "2018-01-01", "end": "2021-12-31"},
+    {"name": "validation", "start": "2022-01-01", "end": "2023-12-31"},
+    {"name": "final_test", "start": "2024-01-01", "end": "2026-10-30"}
+  ]
+}
