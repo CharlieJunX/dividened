@@ -19,6 +19,9 @@ import dividend_report as dividends
 from fundamentals import report as fundamentals
 from fundamentals.config import load_config as load_fundamental_config
 from fundamentals.storage import Store
+from investment import report as investments
+from investment.config import load_config as load_investment_config
+from dividend_data import fetch_yahoo_history
 
 ROOT = Path(__file__).resolve().parent
 KST = timezone(timedelta(hours=9))
@@ -81,11 +84,17 @@ def main():
     parser.add_argument('--fundamental-config', type=Path, default=ROOT / 'fundamental_config.json')
     parser.add_argument('--state-dir', type=Path, default=ROOT / 'state')
     parser.add_argument('--no-fundamentals', action='store_true', help='기존 주가·배당 분석만 실행')
+    parser.add_argument('--investment-config', type=Path, default=ROOT / 'investment_config.json')
+    parser.add_argument('--no-investment', action='store_true', help='밸류에이션·종합 점수 분석 생략')
     parser.add_argument('--symbols', nargs='+', help='입력 목록 내 지정 코드만 조회 (대표 종목 검증용)')
     args = parser.parse_args()
     config = dividends.load_config(args.config)
     fundamental_config = None if args.no_fundamentals else load_fundamental_config(args.fundamental_config)
     fundamental_enabled = bool(fundamental_config and fundamental_config['enabled'])
+    investment_config = None if args.no_investment or args.no_fundamentals else load_investment_config(args.investment_config)
+    investment_enabled = bool(investment_config and investment_config['enabled'])
+    if investment_enabled and fundamental_config:
+        fundamental_config = {**fundamental_config, 'collect_valuation_data': True}
     load_dotenv(args.env_file, override=False)
     token, chat_id = os.getenv('TELEGRAM_BOT_TOKEN'), os.getenv('TELEGRAM_CHAT_ID')
     if not args.dry_run and (not token or not chat_id):
@@ -106,10 +115,11 @@ def main():
     logger.addHandler(log_handler)
     status = 0
     # Preview evaluations/deliveries never change the production comparison baseline.
-    state = Store(args.state_dir / ('fundamentals-preview.sqlite3' if args.dry_run else 'fundamentals.sqlite3')) if fundamental_enabled else None
+    state = Store(args.state_dir / ('fundamentals-preview.sqlite3' if args.dry_run else 'fundamentals.sqlite3')) if fundamental_enabled or investment_enabled else None
     if state:
-        state.prune_cache(max(35, fundamental_config['refresh_days'] * 2))
+        state.prune_cache(max(35, (fundamental_config or {}).get('refresh_days', 7) * 2))
     all_results, preview = [], []
+    all_investments = []
     for market, inputs in jobs:
         # A new folder per market guarantees that yesterday's CSV cannot be sent.
         with tempfile.TemporaryDirectory(dir=args.output_dir) as folder:
@@ -124,9 +134,11 @@ def main():
             messages = build_messages(market, alerts, timestamp)
             quote_audit = json.loads(output.with_suffix('.audit.json').read_text(encoding='utf-8'))
             records = []
+            histories, financial_records = {}, []
             if config['enabled']:
                 records, failed = dividends.run_market(market, inputs, quote_audit, args.output_dir,
-                                                       config, datetime.now(KST).date())
+                                                       config, datetime.now(KST).date(),
+                                                       **({'history_sink': histories} if investment_enabled else {}))
                 all_results.extend(records)
                 status = max(status, int(failed))
             if fundamental_enabled:
@@ -137,6 +149,14 @@ def main():
                 for dividend_record in records:
                     dividend_record['fundamental'] = financial_by_code[dividend_record['code']]
                 print(f'{market}: 펀더멘털 {len(financial_records)}개 분석, 자료 수집 오류 {financial_failed}', flush=True)
+            if investment_enabled:
+                investment_records = investments.run_market(market, inputs, quote_audit, records, financial_records,
+                    histories, investment_config, config, state, datetime.now(KST).date(), fetch_yahoo_history)
+                all_investments.extend(investment_records)
+                by_code = {r['code']: r for r in investment_records}
+                for dividend_record in records:
+                    dividend_record['investment'] = by_code[dividend_record['code']]['score']
+                print(f'{market}: 종합 점수 {len(investment_records)}개 분석, 순위 가능 {sum(r["score"]["rank_eligible"] for r in investment_records)}개', flush=True)
             print(f'{market}: 알림 대상 {len(alerts)}개, 조회 실패 여부 {bool(result)}', flush=True)
             preview.extend(messages)
             if args.dry_run:
@@ -146,15 +166,22 @@ def main():
                 time.sleep(1.1)
     dividend_messages = dividends.build_messages(all_results, config) if config['enabled'] else []
     preview.extend(dividend_messages)
+    investment_messages = []
+    if investment_enabled:
+        investments.save(all_investments, args.output_dir)
+        investment_messages = investments.build_messages(all_investments, investment_config)
+        preview.extend(investment_messages)
     pending = fundamentals.notifications(state, [f'{m}:{s[0]}' for m, inputs in jobs for s in inputs],
                                          datetime.now(KST).date()) if state else []
+    if investment_enabled:
+        pending += investments.notifications(state, all_investments, datetime.now(KST).date())
     preview.extend(text for _, text in pending)
     (args.output_dir / 'telegram_preview.txt').write_text('\n\n---\n\n'.join(preview), encoding='utf-8')
     if args.dry_run:
         for message in preview:
             print(message, flush=True)
     else:
-        for message in dividend_messages:
+        for message in dividend_messages + investment_messages:
             send_message(token, chat_id, message)
             time.sleep(1.1)
         if state:

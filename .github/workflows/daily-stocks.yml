@@ -44,13 +44,15 @@ jobs:
       - name: Explain missing persistent state
         if: ${{ vars.FUNDAMENTAL_STATE_BUCKET == '' }}
         run: echo '::warning::No durable financial state configured. Cross-run history and alert deduplication require versioned S3; see README.'
-      - name: Collect and send Telegram alerts
+      - name: Collect prices, dividends, fundamentals and investment scores
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DATA_GO_KR_SERVICE_KEY: ${{ secrets.DATA_GO_KR_SERVICE_KEY }}
           OPENDART_API_KEY: ${{ secrets.OPENDART_API_KEY }}
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        # Valuation/ranking use the same runner and persisted SQLite database.
+        # No push trigger: retain the existing weekly schedule/manual execution.
         run: python daily_runner.py --market all
       - name: Persist durable financial state
         if: ${{ always() && vars.FUNDAMENTAL_STATE_BUCKET != '' && vars.FUNDAMENTAL_STATE_WRITE_APPROVED == 'true' && hashFiles('state/fundamentals.sqlite3') != '' }}

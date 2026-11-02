@@ -428,7 +428,7 @@ def test_daily_dry_run_integrates_financials_without_delivery(tmp_path):
         output.with_suffix('.audit.json').write_text(json.dumps([{'code': 'SAMPLE', 'current': 65, 'high_52week': 100}]))
         return 0
     dividend = {'code': 'SAMPLE', 'candidate': True, 'metrics': {'yield_pct': 5}}
-    with patch('sys.argv', ['daily_runner.py', '--market', 'us', '--dry-run', '--env-file', str(tmp_path / 'none'),
+    with patch('sys.argv', ['daily_runner.py', '--market', 'us', '--dry-run', '--no-investment', '--env-file', str(tmp_path / 'none'),
                             '--output-dir', str(tmp_path), '--state-dir', str(tmp_path / 'state')]), \
          patch.object(daily_runner.stocks, 'read_stocks', return_value=[('SAMPLE', '가상기업', 'A', '')]), \
          patch.object(daily_runner.stocks, 'run_market', side_effect=quote), \

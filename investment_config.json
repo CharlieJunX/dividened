@@ -1,0 +1,32 @@
+{
+  "enabled": true,
+  "grade_points": {"A": 25, "B": 18, "C": 10},
+  "fundamental_points": {"NORMAL": 25, "WARNING": 13, "HIGH_RISK": 0},
+  "domain_weights": {"shareholder": 25, "fundamental": 25, "valuation": 25, "growth": 15, "price_risk": 10},
+  "coverage": {"regular": 95, "provisional": 80},
+  "high_risk_cap": 59,
+  "grades": {"S": 85, "A": 70, "B": 55, "C": 40, "D": 0},
+  "valuation": {
+    "months": 60, "min_months": 36, "max_price_age_days": 10,
+    "max_financial_age_days": 200, "max_shares_age_days": 120,
+    "max_multiples": {"per": 200, "pbr": 50, "ev_ebitda": 100, "p_affo": 200, "p_ffo": 200},
+    "structural_change_ratio": 2
+  },
+  "industries": {
+    "GENERAL": {"valuation": {"per": 7, "pbr": 4, "fcf_yield": 9, "ev_ebitda": 5}, "growth": {"revenue": 5, "eps": 5, "fcf": 5}},
+    "BANK": {"valuation": {"pbr": 15, "per": 10}, "growth": {"net_income": 5, "eps": 5, "roe": 5}},
+    "INSURER": {"valuation": {"pbr": 15, "per": 10}, "growth": {"net_income": 5, "eps": 5, "insurance_income": 5}},
+    "REIT": {"valuation": {"p_affo": 15, "p_ffo": 10}, "growth": {"affo": 5, "ffo": 5, "rental_income": 5}},
+    "OTHER_FINANCIAL": {"valuation": {"pbr": 15, "per": 10}, "growth": {"net_income": 5, "eps": 5, "roe": 5}},
+    "UNKNOWN": {"valuation": {"unclassified": 25}, "growth": {"unclassified": 15}}
+  },
+  "growth": {"full_score_cagr_pct": 20, "one_off_jump_pct": 100, "one_off_max_fraction": 0.5},
+  "price_risk": {
+    "min_observations": 200, "min_span_days": 330, "max_gap_days": 10,
+    "annualization_days": 252,
+    "default": {"volatility": [15, 60], "mdd": [10, 50]},
+    "overrides": {}
+  },
+  "notifications": {"max_candidates": 10, "detail": true, "events_candidate_only": true, "score_drop": 10},
+  "securities": {}
+}

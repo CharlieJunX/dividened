@@ -20,10 +20,11 @@ TAGS = {
     'long_debt': ['dart_LongTermBorrowingsGross'],
     'current_long_debt': ['dart_CurrentPortionOfLongTermBorrowings'],
     'assets': ['ifrs-full_Assets'], 'equity': ['ifrs-full_Equity'],
+    'equity_parent': ['ifrs-full_EquityAttributableToOwnersOfParent'],
     'interest': ['ifrs-full_InterestExpense'],
     'dividends': ['ifrs-full_DividendsPaidClassifiedAsFinancingActivities'],
 }
-INSTANT = {'cash', 'short_debt', 'long_debt', 'current_long_debt', 'assets', 'equity'}
+INSTANT = {'cash', 'short_debt', 'long_debt', 'current_long_debt', 'assets', 'equity', 'equity_parent'}
 REPORTS = {'11013': (3, 31), '11012': (6, 30), '11014': (9, 30), '11011': (12, 31)}
 
 
@@ -90,6 +91,26 @@ def parse_statement(payload, year, report, scope, as_of, corp_code):
     return facts
 
 
+def parse_shares(payload, year, report, as_of, corp_code):
+    expected = date(year, *REPORTS[report]).isoformat()
+    rows = [r for r in payload.get('list', []) if r.get('se') in {'보통주', '보통주식'}]
+    if len(rows) != 1:
+        return []
+    r = rows[0]
+    if r.get('corp_code') != corp_code:
+        raise DataError('OpenDART share issuer mismatch')
+    receipt = r.get('rcept_no', '')
+    if len(receipt) != 14 or not receipt.isdigit() or r.get('stlm_dt') != expected:
+        return []
+    filed = date(int(receipt[:4]), int(receipt[4:6]), int(receipt[6:8])).isoformat()
+    value = amount(r.get('distb_stock_co'))
+    if filed > str(as_of) or value is None or value <= 0:
+        return []
+    return [Fact('common_shares', value, None, expected, filed, 'shares', 'issuer', 'corporate-share-register',
+                 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=' + receipt,
+                 receipt, 'stockTotqySttus.distb_stock_co')]
+
+
 class DART:
     def __init__(self, client, config):
         self.client, self.config = client, config
@@ -117,7 +138,7 @@ class DART:
                             end_de=as_of.strftime('%Y%m%d'), pblntf_ty='A', page_count=100)
         fingerprint = digest(filings)
         metadata['fingerprint'] = fingerprint
-        cache_key = f'dart-facts:v2:{corp}:{self.config["history_years"]}:{fingerprint}'
+        cache_key = f'dart-facts:v4:{corp}:{self.config["history_years"]}:{bool(self.config.get("collect_valuation_data"))}:{fingerprint}'
         cached = self.client.store.get(cache_key, self.config['refresh_days'] * 86400)
         if cached is not None:
             return [Fact(**f) for f in cached], metadata, ['EPS 및 차입금 전체 범위는 별도 확인 필요']
@@ -132,5 +153,14 @@ class DART:
                     collected.extend(parse_statement(payload, year, report, scope, as_of, corp))
             if collected:
                 break  # Never fill gaps in consolidated histories with separate statements.
+        if self.config.get('collect_valuation_data'):
+            for year, report in sorted({(int(f.start[:4]), code) for f in collected if f.start
+                                        for code, md in REPORTS.items() if f.end == date(int(f.start[:4]), *md).isoformat()}):
+                try:
+                    payload = self.call('stockTotqySttus', key, self.config['refresh_days'] * 86400,
+                                        revision=fingerprint, corp_code=corp, bsns_year=year, reprt_code=report)
+                    collected.extend(parse_shares(payload, year, report, as_of, corp))
+                except DataError as exc:
+                    metadata.setdefault('valuation_issues', []).append(str(exc))
         self.client.store.put(cache_key, [f.dump() for f in collected])
         return collected, metadata, ['EPS 및 차입금 전체 범위는 별도 확인 필요']

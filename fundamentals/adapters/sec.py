@@ -17,6 +17,8 @@ GAAP = {
     'dividends': ['PaymentsOfDividends'],
     'common_dividends': ['PaymentsOfDividendsCommonStock'], 'dps': ['CommonStockDividendsPerShareDeclared'],
     'credit_loss': ['ProvisionForLoanLeaseAndOtherLosses'],
+    'common_shares': ['CommonStockSharesOutstanding'],
+    'equity_parent': ['StockholdersEquity'],
 }
 IFRS = {
     'revenue': ['Revenue'], 'operating_income': ['ProfitLossFromOperatingActivities'],
@@ -29,7 +31,7 @@ IFRS = {
 }
 
 
-def parse_facts(payload, as_of, eps_verified=False, history_years=6):
+def parse_facts(payload, as_of, eps_verified=False, history_years=6, retain_aliases=False):
     # Never mix US GAAP and IFRS in the same result.
     taxonomy = 'us-gaap' if payload.get('facts', {}).get('us-gaap') else 'ifrs-full'
     concepts = payload.get('facts', {}).get(taxonomy, {})
@@ -42,7 +44,9 @@ def parse_facts(payload, as_of, eps_verified=False, history_years=6):
         for tag in tags:
             entries = concepts.get(tag, {}).get('units', {})
             for unit, facts in entries.items():
-                if metric in ('eps', 'dps'):
+                if metric == 'common_shares':
+                    valid_unit = unit == 'shares'
+                elif metric in ('eps', 'dps'):
                     valid_unit = unit.endswith('/shares')
                 else:
                     valid_unit = len(unit) == 3 and unit.isupper()
@@ -54,7 +58,7 @@ def parse_facts(payload, as_of, eps_verified=False, history_years=6):
                              and f.get('form') in {'10-K', '10-Q', '10-K/A', '10-Q/A', '20-F', '20-F/A', '40-F', '40-F/A', '6-K'}]
                 keys = {(f.get('start'), f['end'], unit) for f in available}
                 for f in available:
-                    if (f.get('start'), f['end'], unit) in seen or f.get('val') is None:
+                    if ((f.get('start'), f['end'], unit) in seen and not retain_aliases) or f.get('val') is None:
                         continue
                     accession = f.get('accn', '')
                     source = f'https://www.sec.gov/Archives/edgar/data/{int(payload["cik"])}/{accession.replace("-", "")}/'
@@ -99,6 +103,9 @@ class SEC(Adapter):
         verified = (review.get('eps_verified') is True and review.get('eps_source')
                     and review.get('reviewed_on', '9999') <= str(as_of))
         facts = parse_facts(payload, as_of, bool(verified), self.config['history_years'])
+        if self.config.get('collect_valuation_data'):
+            # Preserve original alias/version facts for old month ends, before current alias preference.
+            self.client.store.merge_facts('us:' + code, parse_facts(payload, as_of, bool(verified), self.config['history_years'], True))
         issues = ['EPS 합산·분할 기준 미확인'] if not verified else []
         if review.get('adr') is not False and sub.get('entityType') == 'operating' and any(
                 f.get('standard') == 'ifrs-full' for f in (x.dump() for x in facts)):

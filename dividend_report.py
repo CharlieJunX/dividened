@@ -121,7 +121,7 @@ def cut_text(value):
     return 'N/A' if value is None else '있음' if value else '없음'
 
 
-def run_market(market, inputs, quote_audit, output_dir, config, as_of):
+def run_market(market, inputs, quote_audit, output_dir, config, as_of, history_sink=None):
     snapshots = {s['code']: s for s in quote_audit}
     results, audits, errors = [], [], []
     for code, name, grade, risk in inputs:
@@ -140,6 +140,8 @@ def run_market(market, inputs, quote_audit, output_dir, config, as_of):
                           drawdown=float(stocks.rate(snapshot['current'], snapshot['high_52week'])),
                           currency=snapshot.get('currency'))
             history = fetch_history(code, market, config, as_of)
+            if history_sink is not None:
+                history_sink[code] = history
             record.update(source=history['source'], retrieved_at=history['retrieved_at'])
             review = get_review(config, market, code)
             metrics = calculate(history, record['current'], record['currency'], review, config['quality'],
@@ -179,6 +181,9 @@ def run_market(market, inputs, quote_audit, output_dir, config, as_of):
 
 def build_messages(results, config):
     candidates = sorted((r for r in results if r['candidate']), key=lambda r: r['metrics']['ratio'], reverse=True)
+    if any(r.get('investment') for r in candidates):
+        candidates.sort(key=lambda r: (r.get('investment', {}).get('adjusted_score') is None,
+                                      -(r.get('investment', {}).get('adjusted_score') or 0)))
     if not candidates:
         return ['[배당 저평가 탐지 리포트]\n배당 저평가 후보 없음'] if config['notifications']['notify_empty'] else []
     messages = []

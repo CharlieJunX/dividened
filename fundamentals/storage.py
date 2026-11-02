@@ -20,6 +20,10 @@ class Store:
             CREATE TABLE IF NOT EXISTS evaluations (id INTEGER PRIMARY KEY, symbol TEXT, at TEXT, value TEXT);
             CREATE TABLE IF NOT EXISTS deliveries (key TEXT PRIMARY KEY, at TEXT, status TEXT);
             CREATE TABLE IF NOT EXISTS outbox (key TEXT PRIMARY KEY, symbol TEXT, value TEXT);
+            CREATE TABLE IF NOT EXISTS financial_facts (symbol TEXT, hash TEXT, value TEXT, PRIMARY KEY(symbol,hash));
+            CREATE TABLE IF NOT EXISTS valuation_months (symbol TEXT, month TEXT, hash TEXT, value TEXT, PRIMARY KEY(symbol,month,hash));
+            CREATE TABLE IF NOT EXISTS investment_history (id INTEGER PRIMARY KEY, symbol TEXT, at TEXT, value TEXT);
+            CREATE INDEX IF NOT EXISTS investment_lookup ON investment_history(symbol,at,id);
         ''')
 
     def get(self, key, max_age):
@@ -68,6 +72,34 @@ class Store:
 
     def close(self):
         self.db.close()
+
+    def merge_facts(self, symbol, facts):
+        from .models import Fact
+        with self.db:
+            for fact in facts:
+                value = fact.dump()
+                self.db.execute('INSERT OR IGNORE INTO financial_facts VALUES (?,?,?)', (symbol, digest(value), encode(value)))
+        return [Fact(**json.loads(r[0])) for r in self.db.execute('SELECT value FROM financial_facts WHERE symbol=?', (symbol,))]
+
+    def valuation_month(self, symbol, month, signature, point=None):
+        if point is not None:
+            with self.db:
+                self.db.execute('INSERT OR IGNORE INTO valuation_months VALUES (?,?,?,?)',
+                                (symbol, month, signature, encode(point)))
+            return point
+        row = self.db.execute('SELECT value FROM valuation_months WHERE symbol=? AND month=? AND hash=?',
+                              (symbol, month, signature)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def previous_investment(self, symbol, as_of):
+        row = self.db.execute('SELECT value FROM investment_history WHERE symbol=? AND at<=? ORDER BY id DESC LIMIT 1',
+                              (symbol, str(as_of))).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def record_investment(self, symbol, result):
+        with self.db:
+            self.db.execute('INSERT INTO investment_history(symbol,at,value) VALUES (?,?,?)',
+                            (symbol, result['as_of'], encode(result)))
 
 
 def digest(value):

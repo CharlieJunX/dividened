@@ -94,6 +94,7 @@ def run_market(market, inputs, quote_audit, dividend_records, output_dir, config
                 extra, extra_source = load_official_file(review['facts_file'], market, code, as_of)
                 facts.extend(extra)
                 metadata['supplement'] = extra_source
+            store.merge_facts(symbol, facts)
             industry, classification_source = classify(review, metadata, as_of)
             analysis = evaluate(facts, as_of, industry, config, review, issues, div)
         except Exception as exc:

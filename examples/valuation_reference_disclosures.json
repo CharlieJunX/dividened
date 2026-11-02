@@ -1,0 +1,36 @@
+{
+  "description": "Manually checked public disclosure facts for reproducible formula validation, not a complete current investment dataset. Not loaded by the production runner.",
+  "reviewed_on": "2026-10-28",
+  "cases": [
+    {
+      "market": "us", "code": "AAPL", "industry": "GENERAL", "currency": "USD", "valuation_date": "2025-10-31",
+      "start": "2024-09-29", "end": "2025-09-27", "filed": "2025-10-31", "standard": "us-gaap",
+      "source": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
+      "filing_index": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/0000320193-25-000079-index.html",
+      "values": {"eps": 7.46, "ocf": 111482000000, "capex": 12715000000, "common_equity": 73733000000, "common_shares": 14773260000},
+      "notes": "Amounts and shares in the filing are in millions/thousands as labeled. Converted to USD and actual shares. CAPEX cash outflow is normalized to positive spending. No EBITDA/EV adjustment assumption."
+    },
+    {
+      "market": "us", "code": "JPM", "industry": "BANK", "currency": "USD", "valuation_date": "2026-01-13",
+      "start": "2025-01-01", "end": "2025-12-31", "filed": "2026-01-13", "standard": "us-gaap",
+      "source": "https://www.sec.gov/Archives/edgar/data/19617/000162828026001902/a4q25erfexhibit991narrative.htm",
+      "values": {"eps": 20.02},
+      "notes": "Reported full-year diluted EPS, not EPS excluding significant items. PBR left unavailable rather than substituting tangible book value."
+    },
+    {
+      "market": "eu", "code": "ALV.DE", "industry": "INSURER", "currency": "EUR", "valuation_date": "2026-03-13",
+      "start": "2025-01-01", "end": "2025-12-31", "filed": "2026-03-13", "standard": "ifrs-full",
+      "source": "https://www.allianz.com/en/investor_relations/results-reports/financial-statements.html",
+      "values": {"eps": 27.67},
+      "notes": "Diluted IFRS EPS, not core EPS 28.61 or basic EPS 27.69. Annual report publication date is explicitly stated on the source page."
+    },
+    {
+      "market": "us", "code": "O", "industry": "REIT", "currency": "USD", "valuation_date": "2026-02-24",
+      "start": "2025-01-01", "end": "2025-12-31", "filed": "2026-02-24", "standard": "us-gaap",
+      "source": "https://www.sec.gov/Archives/edgar/data/726728/000072672826000009/realtyincomeq42025supple.htm",
+      "release_source": "https://www.realtyincome.com/sites/realty-income/files/2026-02/02-24-26-realty-income-announces-operating-results-for-the-three-months-and-year-ended-december-31-2025.pdf",
+      "values": {"affo": 3885898000, "common_shares": 933975000},
+      "notes": "AFFO available to common stockholders, not diluted AFFO including noncontrolling interests. Year-end actual common shares, not weighted-average diluted shares. Normalized FFO is not silently substituted for FFO."
+    }
+  ]
+}
