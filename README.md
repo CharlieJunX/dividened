@@ -403,3 +403,9 @@ Apple 검토 근거: [공식 배당 이력](https://investor.apple.com/dividend-
 `telegram_preview.txt`, 요청된 후보 출력 형식의 **가상 샘플**은
 `reports/sample_telegram_preview.txt`에서 확인할 수 있습니다. 실제 전송과 push는
 수행하지 않았습니다. reports는 기존 정책에 따라 Git에서 제외됩니다.
+
+
+## AI 투자 리포터
+
+설정과 실행 방법: [AI_REPORTER.md](AI_REPORTER.md).
+

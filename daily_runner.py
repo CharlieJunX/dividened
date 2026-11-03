@@ -87,6 +87,7 @@ def main():
     parser.add_argument('--investment-config', type=Path, default=ROOT / 'investment_config.json')
     parser.add_argument('--no-investment', action='store_true', help='밸류에이션·종합 점수 분석 생략')
     parser.add_argument('--symbols', nargs='+', help='입력 목록 내 지정 코드만 조회 (대표 종목 검증용)')
+    parser.add_argument('--ai-reports', action='store_true', help='정량 분석 성공 후 AI 리포트 생성 (전송 없음)')
     args = parser.parse_args()
     config = dividends.load_config(args.config)
     fundamental_config = None if args.no_fundamentals else load_fundamental_config(args.fundamental_config)
@@ -191,6 +192,13 @@ def main():
             fundamentals.deliver(state, pending, send_financial)
     if state:
         state.close()
+    if args.ai_reports and investment_enabled and status == 0:
+        try:
+            from ai_report_runner import main as generate_ai_reports
+            generate_ai_reports(['--candidates', '--results-dir', str(args.output_dir),
+                                 '--env-file', str(args.env_file), '--dry-run'])
+        except Exception as exc:
+            logger.error('AI 리포트 생성 실패: %s', type(exc).__name__)
     logger.removeHandler(log_handler)
     log_handler.close()
     return status
