@@ -1,0 +1,50 @@
+name: RMS official IR Telegram
+on:
+  schedule:
+    - cron: '17 7,13 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/rms-ir.yml', 'rms-news-alert/alert.py']
+
+permissions:
+  contents: write
+concurrency:
+  group: rms-ir-telegram
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Check PDF reader
+        run: command -v pdftotext || (sudo apt-get update -qq && sudo apt-get install -y poppler-utils)
+      - name: Test notification logic
+        run: python3 -m unittest discover -s rms-news-alert
+      - name: Check official IR and send new releases
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python3 rms-news-alert/alert.py check
+      - name: Save confirmed Telegram receipts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=rms-news-alert/delivery.json
+          [[ -f "$file" ]] || exit 0
+          git add -- "$file"
+          git diff --cached --quiet && exit 0
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Record RMS IR Telegram delivery"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep 2
+          done
+          exit 1
